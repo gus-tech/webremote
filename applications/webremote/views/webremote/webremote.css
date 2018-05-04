@@ -1,0 +1,298 @@
+body{
+    margin:0;
+    padding:0;
+    border:0;
+    background-color:lightgray;
+}
+
+
+
+.button_label{
+    margin-left: auto;
+    margin-right: auto;
+    position: relative;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.button{
+    border: 1px solid black;
+    border-radius: 10px;
+    text-align: center;
+    vertical-align: middle;
+    cursor: pointer;
+    position: relative;
+    z-index: 100;
+}
+.template{
+    padding: 10px;
+    background-color:pink;
+    padding-left: 6px;
+    position: relative;
+    cursor: copy;
+}
+
+.clickable{
+    box-shadow: 0 6px #999;
+}
+.clickable:active {
+    box-shadow: 0 3px #666;
+    transform: translateY(3px);
+}
+.small{
+    width:40px;
+    height:40px;
+    min-width:40px;
+    min-height:40px;
+    max-width:40px;
+    max-height:40px;
+}
+.large{
+    width:100px;
+    height:100px;
+    min-width:100px;
+    min-height:100px;
+    max-width:100px;
+    max-height:100px;
+}
+.wide{
+    width:100px;
+    height:40px;
+    min-width:100px;
+    min-height:40px;
+    max-width:100px;
+    max-height:40px;
+}
+.tall{
+    width:40px;
+    height:100px;
+    min-width:40px;
+    min-height:100px;
+    max-width:40px;
+    max-height:100px;
+}
+
+
+
+.remote_button{
+    border: 1px solid black;
+    border-radius: 5px;
+    background-color:white;
+    width: 50%;
+    min-height: 22px;
+    text-align: center;
+    vertical-align: middle;
+    display:inline-block;
+    cursor: pointer;
+    z-index: 100;
+}
+.remote_button_mobile{
+    width: 33%;
+    min-height: 44px;
+    font-size: 180%;
+}
+
+.button_bind{
+    border: 1px solid black;
+    border-radius: 5px;
+    background-color:white;
+    width: 100%;
+    height: 22px;
+    text-align: center;
+    cursor: pointer;
+}
+
+.add_remote_button{
+    border: 1px solid black;
+    border-radius: 5px;
+    background-color:lightgreen;
+    width: 100%;
+
+    text-align: center;
+    cursor: pointer;
+    z-index: 100;
+}
+
+.add_remote_button_mobile{
+    min-height: 44px;
+    font-size: 180%;
+}
+
+.key_bind{
+    border: 1px solid black;
+    border-radius: 5px;
+    background-color:white;
+    width: 100%;
+    min-height: 22px;
+    text-align: center;
+    display:inline-block;
+    cursor: pointer;
+    z-index: 100;
+}
+.key_bind_mobile{
+    width: 50%;
+    min-height: 44px;
+    font-size: 180%;
+}
+
+.voice_bind{
+    border: 1px solid black;
+    border-radius: 5px;
+    background-color:white;
+    width: 100%;
+    min-height: 22px;
+    text-align: center;
+    display:inline-block;
+    cursor: pointer;
+    z-index: 100;
+}
+.voice_bind_mobile{
+    width: 50%;
+    min-height: 44px;
+    font-size: 180%;
+}
+
+.activity,{
+    width: 100%;
+    height: 100%;
+}
+.add_button{
+    background-color:lightgreen;
+}
+.delete_remote{
+    background-color:pink;
+}
+
+.main-container{
+    margin: 0;
+    padding: 0;
+    background-color:lightgray;
+}
+
+.ui-page{
+    background-color:lightgray;
+}
+
+#master{
+    display: flex;
+    max-width:1140px;
+    margin: 0;
+    padding: 0;
+}
+
+#primary_div{
+    border:0;
+    width:600px;
+    min-width:600px;
+    max-width:600px;
+    height:800px;
+    min-height:800px;
+    max-height:950px;
+    background-color:lightgray;
+    margin: 0;
+    padding: 0;
+}
+
+#primary_tab{
+}
+
+#activities_div{
+    border:0;
+    width:600px;
+    min-width:600px;
+    max-width:600px;
+    height:800px;
+    min-height:600px;
+    max-height:900px;
+    background-color:lightgray;
+    margin: 0;
+    padding: 0;
+}
+
+#info_div{
+    border:0;
+    width:600px;
+    min-width:600px;
+    max-width:600px;
+    height:200px;
+    min-height:200px;
+    max-height:200px;
+    background-color:white;
+    margin: 0;
+    padding: 0;
+}
+
+.side_div{
+    width:270px;
+    min-width:270px;
+    max-width:600px;
+    background-color:lightgray;
+    margin: 0;
+    padding: 0;
+}
+
+
+#remotes_div{
+
+    width:auto;
+    min-width:270px;
+    max-width:600px;
+    background-color:lightgray;
+    margin: 0;
+    padding: 0;
+}
+
+#binds_div{
+    border:0;
+    min-width:270px;
+    max-width:600px;
+    margin: 0;
+    padding: 0;
+}
+
+.trashcan{
+    width: 100px;
+    height: 100px;
+    padding-top: 10px;
+    padding-left: 5px;
+}
+
+.remote_div{
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+    width: 100%;
+    height: 100%;
+    max-height: 700px;
+}
+
+.bind_div{
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+    width: 100%;
+    height: 100%;
+}
+.ui-tabs-panel{
+    text-align: center;
+}
+.tabs{
+    margin: 0;
+    padding: 0;
+}
+.selected{
+    -moz-box-shadow: 0px 0px 30px Yellow;
+    -webkit-box-shadow: 0px 0px 30px Yellow;
+    box-shadow: 0px 0px 30px Yellow;
+}
+
+.1{
+    background-color:lightblue;
+}
+.2{
+    background-color:pink;
+}
+html {
+-ms-touch-action: manipulation;
+touch-action: manipulation;
+}

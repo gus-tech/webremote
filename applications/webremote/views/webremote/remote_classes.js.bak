@@ -1,0 +1,20 @@
+var ws = null
+var grid_size = 20
+
+
+
+var temp_button_counter = 0
+var button_assignments = {}
+var key_assignments = {}
+var edit = false
+var bt_button_pressed = false
+var edit_mode = false
+var current_activity = null
+var current_remote = null
+var interval_list = []
+var waiting4key = false
+var current_selection = null
+
+var clear_bt_buttons = {0: [0xFD, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                                   0xFD, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                                   0xFD, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,]}
