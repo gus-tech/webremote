@@ -56,4 +56,9 @@ def define_tables(db):
                     Field('name', 'string'),
                     Field('macro', 'text'),
                     Field('activity_id', 'integer'))
+
+    db.define_table('settings',
+                    Field('setting', 'string'),
+                    Field('val', 'string'))
+
     return db

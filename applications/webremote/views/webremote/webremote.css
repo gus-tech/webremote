@@ -6,7 +6,6 @@ body{
 }
 
 
-
 .button_label{
     margin-left: auto;
     margin-right: auto;
@@ -25,11 +24,58 @@ body{
     z-index: 100;
 }
 .template{
-    padding: 10px;
+    display: inline-block;
     background-color:pink;
-    padding-left: 6px;
     position: relative;
+    cursor: move;
+    margin: 10px;
+    z-index: 1000;
+}
+
+.template_mobile{
     cursor: copy;
+}
+
+#settings_div{
+    text-align: center;
+    display: inline-block;
+    padding: 10px;
+    border: 0;
+    margin: 0;
+}
+
+.settings_div{
+    text-align: center;
+    min-width:70px;
+    min-height:20px;
+    max-width:70px;
+    max-height:70px;
+    display: inline-block;
+}
+
+.power{
+    background-color: white;
+    width:70px;
+    height:20px;
+    min-width:70px;
+    min-height:20px;
+    max-width:70px;
+    max-height:20px;
+}
+
+
+hr{
+    border-width: 3px;
+}
+
+.check{
+   cursor: pointer;
+  /* Double-sized Checkboxes */
+  -ms-transform: scale(2); /* IE */
+  -moz-transform: scale(2); /* FF */
+  -webkit-transform: scale(2); /* Safari and Chrome */
+  -o-transform: scale(2); /* Opera */
+  display: inline-block;
 }
 
 .clickable{
@@ -92,7 +138,7 @@ body{
     font-size: 180%;
 }
 
-.button_bind{
+.button_map{
     border: 1px solid black;
     border-radius: 5px;
     background-color:white;
@@ -102,12 +148,11 @@ body{
     cursor: pointer;
 }
 
-.add_remote_button{
+.add_button{
     border: 1px solid black;
     border-radius: 5px;
     background-color:lightgreen;
     width: 100%;
-
     text-align: center;
     cursor: pointer;
     z-index: 100;
@@ -118,7 +163,7 @@ body{
     font-size: 180%;
 }
 
-.key_bind{
+.key_map{
     border: 1px solid black;
     border-radius: 5px;
     background-color:white;
@@ -129,13 +174,13 @@ body{
     cursor: pointer;
     z-index: 100;
 }
-.key_bind_mobile{
+.key_map_mobile{
     width: 50%;
     min-height: 44px;
     font-size: 180%;
 }
 
-.voice_bind{
+.voice_map{
     border: 1px solid black;
     border-radius: 5px;
     background-color:white;
@@ -146,7 +191,7 @@ body{
     cursor: pointer;
     z-index: 100;
 }
-.voice_bind_mobile{
+.voice_map_mobile{
     width: 50%;
     min-height: 44px;
     font-size: 180%;
@@ -159,6 +204,7 @@ body{
 .add_button{
     background-color:lightgreen;
 }
+
 .delete_remote{
     background-color:pink;
 }
@@ -179,6 +225,7 @@ body{
     margin: 0;
     padding: 0;
 }
+
 
 #primary_div{
     border:0;
@@ -223,8 +270,8 @@ body{
 }
 
 .side_div{
-    width:270px;
-    min-width:270px;
+    width:271px;
+    min-width:271px;
     max-width:600px;
     background-color:lightgray;
     margin: 0;
@@ -233,18 +280,17 @@ body{
 
 
 #remotes_div{
-
     width:auto;
-    min-width:270px;
+    min-width:271px;
     max-width:600px;
     background-color:lightgray;
     margin: 0;
     padding: 0;
 }
 
-#binds_div{
+#maps_div{
     border:0;
-    min-width:270px;
+    min-width:271px;
     max-width:600px;
     margin: 0;
     padding: 0;
@@ -264,15 +310,34 @@ body{
     width: 100%;
     height: 100%;
     max-height: 700px;
+    padding-top:0px;
+    padding-bottom:0px;
 }
 
-.bind_div{
+.add_button_div{
+    margin: 20px;
+}
+
+.map_div{
     margin: 0;
     padding: 0;
     overflow-y: auto;
     width: 100%;
     height: 100%;
+    padding-top:0px;
+    padding-bottom:0px;
 }
+
+.side_div{
+    width:271px;
+    min-width:271px;
+    max-width:600px;
+    background-color:lightgray;
+    margin: 0;
+    padding: 0;
+}
+
+
 .ui-tabs-panel{
     text-align: center;
 }

@@ -1,97 +1,11 @@
 # -*- coding: utf-8 -*-
-import traceback
+import webremote as wr
 
-def add_activity():
-    db.activities[0] = request.vars
-    activity_id = db(db.activities).select(db.activities.id).last().as_dict()['id']
-    default_key_to_button = db(db.default_key_to_button).select()
-    for row in default_key_to_button:
-        db.key_binds[0] = dict(key_code=row.key_code,
-                                     remote_id=row.remote_id,
-                                     button_id=row.button_id,
-                                     activity_id=activity_id)
-    temp_key_binds = db(db.key_binds.activity_id==activity_id).select().as_dict()
-    key_binds = {}
-    for bind_key, bind in temp_key_binds.iteritems():
-        try: key_binds[activity_id][bind['key_code'].lower()] = bind
-        except: key_binds[activity_id] = {}
-    return response.json(key_binds)
 
-def delete_activity():
-    activity_id = int(request.vars['id'])
-    db(db.activities.id == activity_id).delete()
-    db(db.button_binds.activity_id == activity_id).delete()
-    db(db.key_binds.activity_id == activity_id).delete()
-    return request.vars['id']
 
-def add_remote():
-    db.remotes[0] = request.vars
-    return db(db.remotes).select(db.remotes.id).last().as_dict()['id']
 
-def delete_remote():
-    remote_id = int(request.vars['id'])
-    del db.remotes[remote_id]
-    db(db.remote_buttons.remote_id == remote_id).delete()
-    db(db.button_binds.remote_id == remote_id).update(**dict(remote_id=None, button_id=None))
-    db(db.key_binds.remote_id == remote_id).delete()
-    return request.vars['id']
-
-def add_remote_button():
-    db.remote_buttons[0] = request.vars
-    return db(db.remote_buttons).select(db.remote_buttons.id).last().as_dict()['id']
-
-def delete_remote_button():
-    button_id = int(request.vars['id'])
-    del db.remote_buttons[button_id]
-    db(db.button_binds.button_id == button_id).update(**dict(remote_id=None, button_id=None))
-    db(db.key_binds.button_id == button_id).delete()
-    return request.vars['id']
-
-def delete_button_bind():
-    del db.button_binds[int(request.vars['id'])]
-    return request.vars['id']
-
-def save_button_bind():
-    id = request.vars.pop('id', None)
-    if id == None:
-        db.button_binds[0] = request.vars
-        return db(db.button_binds).select(db.button_binds.id).last().as_dict()['id']
-    else:
-        db(db.button_binds.id == int(id)).update(**request.vars)
-        return id
-
-def delete_key_bind():
-    return db((db.key_binds.key_code == request.vars['key_code']) & (db.key_binds.activity_id == request.vars['activity_id'])).delete()
-
-def save_key_bind():
-        db.key_binds.update_or_insert((db.key_binds.key_code == request.vars['key_code']) & (db.key_binds.activity_id == request.vars['activity_id']), **request.vars)
-        return db(db.key_binds).select(db.key_binds.id).last().as_dict()['id']
-
-def webremote():return dict()
+def webremote():
+    return dict()
 
 def index():
-    default_key_to_button = db(db.default_key_to_button).select()
-    for row in default_key_to_button:
-        row.update_record(key_code = row.key_code[0].upper()+row.key_code[1:])
-
-    key_binds = db(db.key_binds).select()
-    for row in key_binds:
-        row.update_record(key_code = row.key_code[0].upper()+row.key_code[1:])
-
-    remotes = db(db.remotes).select().as_dict()
-    buttons = db(db.remote_buttons).select().as_dict()
-    activities = db(db.activities).select().as_dict()
-    button_binds = db(db.button_binds).select().as_dict()
-    temp_key_binds = db(db.key_binds).select().as_dict()
-    key_binds = {}
-    for activity_id, activity in activities.iteritems():
-        for bind_id, bind in temp_key_binds.iteritems():
-            if bind['activity_id'] == activity_id:
-                try: key_binds[activity_id][bind['key_code'].lower()] = bind
-                except: key_binds[activity_id] = {}
-
-    return dict(remotes=remotes,
-                buttons=buttons,
-                button_binds=button_binds,
-                key_binds=key_binds,
-                activities=activities)
+    return wr.get_tables(db)

@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="{{=URL('webremote.css')}}">
 
 <script>
+    document.body.style.display = "none";
     var WEBSOCKET_PORT = "{{=WEBSOCKET_PORT}}"
     var remotes = JSON.parse("{{=XML(json.dumps(remotes).replace('"','\\"'))}}");
     console.log("Remotes:"); console.log(remotes);
@@ -15,12 +16,12 @@
     console.log("Buttons:"); console.log(buttons);
     var activities = JSON.parse("{{=XML(json.dumps(activities).replace('"','\\"'))}}");
     console.log("Activities:"); console.log(activities);
-    var button_binds = JSON.parse("{{=XML(json.dumps(button_binds).replace('"','\\"'))}}");
-    console.log("Button Binds:"); console.log(button_binds);
-    var key_binds = JSON.parse("{{=XML(json.dumps(key_binds).replace('"','\\"'))}}");
-    console.log("Key Binds:"); console.log(key_binds);
-    var voice_binds = JSON.parse("{{=XML(json.dumps(voice_binds).replace('"','\\"'))}}");
-    console.log("Voice Binds:"); console.log(voice_binds);
+    var button_maps = JSON.parse("{{=XML(json.dumps(button_maps).replace('"','\\"'))}}");
+    console.log("Button Maps:"); console.log(button_maps);
+    var key_maps = JSON.parse("{{=XML(json.dumps(key_maps).replace('"','\\"'))}}");
+    console.log("Key Maps:"); console.log(key_maps);
+    var voice_maps = JSON.parse("{{=XML(json.dumps(voice_maps).replace('"','\\"'))}}");
+    console.log("Voice Maps:"); console.log(voice_maps);
     var LAYOUT_WIDTH = 1140
     var LAYOUT_HEIGHT = 800
     var PADDING = 20
@@ -30,27 +31,29 @@
 <div id="master">
     <div id="toolbar" class="side_div">
         <ul id="toolbar_tabs">
-            <li><a href="#binds_div">Binds</a></li>
+            <li><a href="#maps_div">Maps</a></li>
             <li><a href="#settings_div">Settings</a></li>
         <!--
             <li><a href="#macros_div">Macros</a></li>
         -->
-            <li id="edit_check"><a href="#edit_mode">
+            <li id="edit_check" data-toggle="tooltip" data-placement="bottom" title="Toggle Edit Mode"><a href="#edit_mode">
                 <span class="edit_mode glyphicon glyphicon-unchecked" data-checked="true"></span>
             </a></li>
         </ul>
-        <div id="binds_div">
-            <ul id="binds_tabs">
-                <li><a href="#add_bind" class="add trash">
-                        <span class="glyphicon glyphicon-plus"></span>
-                </li></a>
-                <li><a href="#key_binds">Keyboard</a></li>
-                <li><a href="#voice_binds">Voice</a></li>
+        <div id="maps_div">
+            <ul id="maps_tabs">
+                <li><a href="#key_maps">Keyboard</a></li>
+                <li><a href="#voice_maps">Voice</a></li>
             </ul>
-            <div id="key_binds" class="bind_div" style="padding-bottom:0px;"></div>
-            <div id="voice_binds" class="bind_div" style="padding-bottom:0px;"></div>
+            <div id="add_map_div" class="add_button_div">
+                <div id="add_map_button" class="button add_button" style="padding-top:0px; padding-bottom:0px;" onclick="add_map();">Add Map</div>
+            </div>
+            <div id="key_maps" class="map_div"></div>
+            <div id="voice_maps" class="map_div"></div>
         </div>
         <div id="settings_div">
+            <h1>Voice</h1>
+            <input id="voice_check" type="checkbox">
             <h1>Buttons</h1>
             <div id="button_large" class="button template large"></div><br>
             <div id="button_wide"  class="button template wide" ></div><br>
@@ -66,8 +69,8 @@
                 <li><a href="#activity_macros">Activity</a></li>
                 <li><a href="#global_macros">Global</a></li>
             </ul>
-            <div id="activity_macros" class="bind_div" style="padding-bottom:0px;"></div>
-            <div id="global_macros" class="bind_div" style="padding-bottom:0px;"></div>
+            <div id="activity_macros" class="map_div" style="padding-bottom:0px;"></div>
+            <div id="global_macros" class="map_div" style="padding-bottom:0px;"></div>
         </div>
     -->
     </div><!--toolbar-->
@@ -75,12 +78,12 @@
         <ul id="primary_tabs">
             <li><a href="#activities_div">Activities</a></li>
             <li><a href="#remotes_div">Remotes</a></li>
-            <li><a href="#binds_div">Binds</a></li>
+            <li><a href="#maps_div">Maps</a></li>
             <li><a href="#settings_div">Settings</a></li>
         </ul>
         <div id="activities_div">
             <ul id="activities_tab">
-                <li><a href="#add_activity" class="add trash">
+                <li data-toggle="tooltip" data-placement="bottom" title="Add Activity"><a href="#add_activity" class="add trash">
                         <span class="glyphicon glyphicon-plus"></span>
                 </li></a>
             </ul>
@@ -92,24 +95,19 @@
     </div><!--primary_div-->
     <div id="remotes_div" class="side_div">
         <ul id="remotes_tabs">
-            <li><a href="#add_remote" class="add trash">
+            <li data-toggle="tooltip" data-placement="bottom" title="Add Remote"><a href="#add_remote" class="add trash">
                 <span class="glyphicon glyphicon-plus"></span>
             </a></li>
         </ul>
+        <div id="add_remote_button_div" class="add_button_div">
+            <div id="add_remote_button" class="button add_button" style="padding-top:0px; padding-bottom:0px;" onclick="add_remote_button();">Add Button</div>
+        </div>
     </div>
 </div><!--master-->
 
-
-
 <script src="{{=URL('static', 'js/jquery-ui.js')}}"></script>
-<script src="{{=URL('static', 'js/jquery.ui.touch-punch.min.js')}}"></script>
 <script src="{{=URL('static', 'js/jquery.mobile-1.4.5.js')}}"></script>
+<script src="{{=URL('static', 'js/jquery.ui.touch-punch.min.js')}}"></script>
 <script src="{{=URL('static', 'js/jquerymobile-swipeupdown.js')}}"></script>
 <script src="{{=URL('static', 'js/annyang.min.js')}}"></script>
 <script src="{{=URL('webremote.js')}}"></script>
-
-<script>
-    $(document).ready(function(){
-        $('.main-container').css('display', 'block');
-    }
-</script>

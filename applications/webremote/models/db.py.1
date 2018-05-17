@@ -125,28 +125,14 @@ auth.settings.reset_password_requires_verification = True
 # >>> rows = db(db.mytable.myfield == 'value').select(db.mytable.ALL)
 # >>> for row in rows: print row.id, row.myfield
 # -------------------------------------------------------------------------
-db.define_table('serial_devices',
-                Field('name', 'string'),
-                Field('description', 'string'),
-                Field('port', 'string'),
-                Field('remote_type', 'integer'))
 
-db.define_table('remotes',
-                Field('name', 'string'),
-                Field('description', 'string'),
-                Field('remote_type', 'integer'),
-                Field('device_id', 'integer'))
+from tables import define_tables
+define_tables(db)
 
-db.define_table('remote_buttons',
-                Field('name', 'string'),
-                Field('remote_type', 'integer'),
-                Field('remote_id', 'integer'),
-                Field('code', 'text'))
-
+"""
 db.define_table('activities',
                 Field('name', 'string'))
-
-db.define_table('button_assignments',
+db.define_table('button_binds',
                 Field('classes', 'string'),
                 Field('x', 'integer'),
                 Field('y', 'integer'),
@@ -154,19 +140,42 @@ db.define_table('button_assignments',
                 Field('remote_id', 'integer'),
                 Field('button_id', 'integer'),
                 Field('activity_id', 'integer'))
-
-db.define_table('key_assignments',
-                Field('key_id', 'integer'),
+db.define_table('default_key_to_button',
+                Field('key_code', 'string'),
+                Field('button_id', 'integer'),
+                Field('remote_id', 'integer'))
+db.define_table('key_binds',
+                Field('key_code', 'string'),
                 Field('delay', 'integer'),
                 Field('remote_id', 'integer'),
                 Field('button_id', 'integer'),
                 Field('activity_id', 'integer'))
+db.define_table('remote_buttons',
+                Field('name', 'string'),
+                Field('description', 'string'),
+                Field('code', 'text'),
+                Field('remote_type', 'integer'),
+                Field('remote_id', 'integer'),
+                Field('button_type', 'integer'))
+db.define_table('remotes',
+                Field('name', 'string'),
+                Field('description', 'string'),
+                Field('remote_type', 'integer'),
+                Field('device_id', 'string'))
+db.define_table('serial_devices',
+                Field('name', 'string'),
+                Field('description', 'string'),
+                Field('port', 'string'),
+                Field('remote_type', 'integer'))
+db.define_table('voice_binds',
+                Field('name', 'string'),
+                Field('phrase', 'string'),
+                Field('remote_id', 'integer'),
+                Field('button_id', 'integer'),
+                Field('activity_id', 'integer'))
+"""
 
-db.define_table('event_2_hid',
-                Field('event_code', 'integer'),
-                Field('hid', 'integer'),
-                Field('key_name', 'string'))
 # -------------------------------------------------------------------------
 # after defining tables, uncomment below to enable auditing
 # -------------------------------------------------------------------------
-# auth.enable_record_versioning(db)
+#auth.enable_record_versioning(db)

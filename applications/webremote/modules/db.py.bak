@@ -1,11 +1,13 @@
 #!/usr/bin/env python
 from gluon import *
 from tables import define_tables
-import sys
 
-db = DAL("sqlite://applications/webremote/databases/storage.sqlite",
-     pool_size=0,
-     migrate_enabled=False,
-     fake_migrate=True)
+if 'db' not in globals():
+    #try:
+        db = DAL("sqlite:///home/www-data/web2py/applications/webremote/databases/storage.sqlite",
+             pool_size=99,
+             migrate_enabled=False,
+             fake_migrate=True)
 
-define_tables(db)
+        define_tables(db)
+    #except: pass

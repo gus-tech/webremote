@@ -22,7 +22,7 @@ from gluon.contrib.appconfig import AppConfig
 # -------------------------------------------------------------------------
 # once in production, remove reload=True to gain full speed
 # -------------------------------------------------------------------------
-myconf = AppConfig(reload=True)
+myconf = AppConfig(reload=False)
 
 if not request.env.web2py_runtime_gae:
     # ---------------------------------------------------------------------
@@ -125,53 +125,10 @@ auth.settings.reset_password_requires_verification = True
 # >>> rows = db(db.mytable.myfield == 'value').select(db.mytable.ALL)
 # >>> for row in rows: print row.id, row.myfield
 # -------------------------------------------------------------------------
+
 from tables import define_tables
+define_tables(db)
 
-db.define_table('activities',
-                Field('name', 'string'))
-db.define_table('button_binds',
-                Field('classes', 'string'),
-                Field('x', 'integer'),
-                Field('y', 'integer'),
-                Field('delay', 'integer'),
-                Field('remote_id', 'integer'),
-                Field('button_id', 'integer'),
-                Field('activity_id', 'integer'))
-db.define_table('default_key_to_button',
-                Field('key_code', 'string'),
-                Field('button_id', 'integer'),
-                Field('remote_id', 'integer'))
-db.define_table('key_binds',
-                Field('key_code', 'string'),
-                Field('delay', 'integer'),
-                Field('remote_id', 'integer'),
-                Field('button_id', 'integer'),
-                Field('activity_id', 'integer'))
-db.define_table('remote_buttons',
-                Field('name', 'string'),
-                Field('description', 'string'),
-                Field('code', 'text'),
-                Field('remote_type', 'integer'),
-                Field('remote_id', 'integer'),
-                Field('button_type', 'integer'))
-db.define_table('remotes',
-                Field('name', 'string'),
-                Field('description', 'string'),
-                Field('remote_type', 'integer'),
-                Field('device_id', 'string'))
-db.define_table('serial_devices',
-                Field('name', 'string'),
-                Field('description', 'string'),
-                Field('port', 'string'),
-                Field('remote_type', 'integer'))
-db.define_table('voice_binds',
-                Field('name', 'string'),
-                Field('phrase', 'string'),
-                Field('remote_id', 'integer'),
-                Field('button_id', 'integer'),
-                Field('activity_id', 'integer'))
-
-#define_tables(db)
 # -------------------------------------------------------------------------
 # after defining tables, uncomment below to enable auditing
 # -------------------------------------------------------------------------

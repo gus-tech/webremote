@@ -8,26 +8,17 @@ import tornado.web
 import hmac
 import optparse
 import time
-import sys
 import os
+import sys
 sys.path.append('/home/www-data/web2py')
 import json
 import serial
 import requests
 import subprocess
 import traceback
-#from db import *
-from webremote import *
-import webremote
-try:
-    import CHIP_IO.GPIO as GPIO
-except: pass
-import atexit
+from db import *
+import webremote as wr
 
-try:
-    GPIO.cleanup()
-    GPIO.setup("CSID0",GPIO.OUT, initial=1)
-except: pass
 
 if (sys.version_info[0] == 2):
     from urllib import urlencode, urlopen
@@ -62,13 +53,6 @@ def websocket_send(url, message, hmac_key=None, group='default'):
     f.close()
     return data
 
-@atexit.register
-def on_exit():
-    try:
-        GPIO.cleanup()
-        GPIO.setup("CSID0",GPIO.OUT, initial=0)
-    except: pass
-    exit(0)
 
 class PostHandler(tornado.web.RequestHandler):
     """
@@ -114,6 +98,7 @@ class DistributeHandler(tornado.websocket.WebSocketHandler):
     def __init__(self, application, request, **kwargs):
         tornado.web.RequestHandler.__init__(self, application, request,
                                             **kwargs)
+
         self.stream = request.connection.stream
         self.ws_connection = None
         self.close_code = None
@@ -180,17 +165,25 @@ class DistributeHandler(tornado.websocket.WebSocketHandler):
             while self.ir_in.inWaiting():
                 code.append(ord(self.ir_in.read()))
             if code[0] != 116:
-                self.write_message("Bad mode recieved! Got '{0}', expecting '116'".format(code[0]))
+                for client in listeners.get(self.group, []):
+                    client.write_message("Bad mode recieved! Got '{0}', expecting '116'".format(code[0]))
+                #self.write_message("Bad mode recieved! Got '{0}', expecting '116'".format(code[0]))
                 return False
             if code[2]*2+3 != len(code):
-                self.write_message("Bad length recieved! Got '{0}', expecting '{1}'".format(code[2]*2+3, len(code)))
+                for client in listeners.get(self.group, []):
+                    client.write_message("Bad length recieved! Got '{0}', expecting '{1}'".format(code[2]*2+3, len(code)))
+                #self.write_message("Bad length recieved! Got '{0}', expecting '{1}'".format(code[2]*2+3, len(code)))
                 return False
             #if code[1] != 't': self.write_message("Bad mode recieved! Got '{0}', expecting '116'".format(code[0]))
-            self.write_message("Mode: {0} Freq: {1}, cLen: {2}\nCode[{4}]: {3}".format(code[0], code[1], code[2], code, len(code)))
+            for client in listeners.get(self.group, []):
+                client.write_message("Mode: {0} Freq: {1}, cLen: {2}\nCode[{4}]: {3}".format(code[0], code[1], code[2], code, len(code)))
+            #self.write_message("Mode: {0} Freq: {1}, cLen: {2}\nCode[{4}]: {3}".format(code[0], code[1], code[2], code, len(code)))
             data['code'] = json.dumps(code)
             #r = requests.post("http://localhost/add_remote_button", data=data)
-            data['id'] = add_remote_button(data)
-            self.write_message(json.dumps(data))
+            data = wr.add_remote_button(db, data)
+            for client in listeners.get(self.group, []):
+                client.write_message(json.dumps(data))
+            #self.write_message(json.dumps(data))
             self.ir_error_count = 0
         except:
             self.error_ir("Error reading IR signal!", traceback.format_exc())
@@ -231,14 +224,6 @@ class DistributeHandler(tornado.websocket.WebSocketHandler):
         self.write_message(dict(message=message))
         subprocess.Popen("sudo reboot", shell=True)
         sys.exit(0)
-
-    def reset_usb_devices(self, port=2):
-        #self.ir = None
-        set_usb_power(port, False)
-        time.sleep(2)
-        set_usb_power(port, True)
-        time.sleep(3)
-        self.ir_error_count = 0
 
     def check_origin(self, origin):
         return True
@@ -283,8 +268,11 @@ class DistributeHandler(tornado.websocket.WebSocketHandler):
         try:
             key = obj.keys()[0]
             print(key)
-            method = getattr(webremote, key)
-            self.write_message({key+"_callback":method(obj[key])})
+            method = getattr(wr, key)
+            #self.write_message({key+"_callback":method(db, obj[key])})
+            temp_dict = {key+"_callback":method(db, obj[key])}
+            for client in listeners.get(self.group, []):
+                client.write_message(temp_dict)
         except Exception as e:
             print("Error:")
             print(e)
@@ -306,6 +294,7 @@ class DistributeHandler(tornado.websocket.WebSocketHandler):
 #    return True
 
 if __name__ == "__main__":
+    print("Starting WebSocket!")
     usage = __doc__
     version = ""
     parser = optparse.OptionParser(usage, None, optparse.Option, version)
