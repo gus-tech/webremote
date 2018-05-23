@@ -7,24 +7,19 @@
 <link rel="stylesheet" href="{{=URL('static', 'css/jquery-ui.css')}}">
 <link rel="stylesheet" href="{{=URL('webremote.css')}}">
 
+
 <script>
     document.body.style.display = "none";
     var WEBSOCKET_PORT = "{{=WEBSOCKET_PORT}}"
-    var settings = JSON.parse("{{=XML(json.dumps(settings).replace('"','\\"'))}}");
-    console.log("Settings:", settings);
-    var remotes = JSON.parse("{{=XML(json.dumps(remotes).replace('"','\\"'))}}");
-    console.log("Remotes:", remotes);
-    var buttons = JSON.parse("{{=XML(json.dumps(buttons).replace('"','\\"'))}}");
-    console.log("Buttons:", buttons);
-    var activities = JSON.parse("{{=XML(json.dumps(activities).replace('"','\\"'))}}");
-    console.log("Activities:", activities);
-    var button_maps = JSON.parse("{{=XML(json.dumps(button_maps).replace('"','\\"'))}}");
-    console.log("Button Maps:", button_maps);
-    var key_maps = JSON.parse("{{=XML(json.dumps(key_maps).replace('"','\\"'))}}");
-    console.log("Key Maps:", key_maps);
-    var voice_maps = JSON.parse("{{=XML(json.dumps(voice_maps).replace('"','\\"'))}}");
-    console.log("Voice Maps:", voice_maps);
+    var settings = JSON.parse("{{=XML(json.dumps(settings).replace('"','\\"'))}}"); //console.log("Settings:", settings);
+    var remotes = JSON.parse("{{=XML(json.dumps(remotes).replace('"','\\"'))}}"); //console.log("Remotes:", remotes);
+    var buttons = JSON.parse("{{=XML(json.dumps(buttons).replace('"','\\"'))}}"); //console.log("Buttons:", buttons);
+    var activities = JSON.parse("{{=XML(json.dumps(activities).replace('"','\\"'))}}"); //console.log("Activities:", activities);
+    var button_maps = JSON.parse("{{=XML(json.dumps(button_maps).replace('"','\\"'))}}"); //console.log("Button Maps:", button_maps);
+    var key_maps = JSON.parse("{{=XML(json.dumps(key_maps).replace('"','\\"'))}}"); //console.log("Key Maps:", key_maps);
+    var voice_maps = JSON.parse("{{=XML(json.dumps(voice_maps).replace('"','\\"'))}}"); //console.log("Voice Maps:", voice_maps);
     var LAYOUT_WIDTH = 1140;
+    var LAYOUT_WIDTH_MOBILE = 600;
     var LAYOUT_HEIGHT = 800;
     var PADDING = 20;
     var GRID_SIZE = 10;
@@ -38,20 +33,20 @@
         <!--
             <li><a href="#macros_div">Macros</a></li>
         -->
-            <li id="edit_check" data-toggle="tooltip" data-placement="bottom" title="Toggle Edit Mode"><a href="#edit_mode">
+            <li id="edit_check" data-toggle="tooltip" data-placement="right" title="Toggle Edit Mode"><a href="#edit_mode">
                 <span class="edit_mode glyphicon" data-checked="false"></span>
             </a></li>
         </ul>
         <div id="maps_div">
             <ul id="maps_tabs">
-                <li id="trashcan"><a href="#trash_tab" class="trash">
-                    <span class="glyphicon glyphicon-trash"></span>
+                <li id="trashcan"><a href="#trash_tab" class="trash trashonly">
+                    <span class="trashonly glyphicon glyphicon-trash"></span>
                 </a></li>
                 <li><a href="#key_maps">Keyboard</a></li>
                 <li><a href="#voice_maps">Voice</a></li>
             </ul>
             <div id="add_map_div" class="add_button_div">
-                <div id="add_map_button" class="button add_button" style="padding-top:0px; padding-bottom:0px;" onclick="add_map();">Add Map</div>
+                <div id="add_map_button" class="button add_button" onclick="add_map();">Add Map</div>
             </div>
             <div id="key_maps" class="map_div"></div>
             <div id="voice_maps" class="map_div"></div>
@@ -107,8 +102,8 @@
         </ul>
         <div id="activities_div">
             <ul id="activities_tab">
-                <li data-toggle="tooltip" data-placement="bottom" title="Add Activity"><a href="#add_activity" class="add trash">
-                    <span class="glyphicon glyphicon-plus"></span>
+                <li data-toggle="tooltip" data-placement="right" title="Add Activity"><a href="#add_activity" class="add trash">
+                    <span class="add glyphicon glyphicon-plus"></span>
                 </a></li>
             </ul>
         </div>
@@ -119,12 +114,12 @@
     </div><!--primary_div-->
     <div id="remotes_div" class="side_div">
         <ul id="remotes_tabs">
-            <li data-toggle="tooltip" data-placement="bottom" title="Add Remote"><a href="#add_remote" class="add trash">
-                <span class="glyphicon glyphicon-plus"></span>
+            <li id="add_remote_tab" data-toggle="tooltip" data-placement="right" title="Add Remote"><a href="#add_remote" class="add trash">
+                <span class="add glyphicon glyphicon-plus"></span>
             </a></li>
         </ul>
         <div id="add_remote_button_div" class="add_button_div">
-            <div id="add_remote_button" class="button add_button" style="padding-top:0px; padding-bottom:0px;" onclick="add_remote_button();">Add Button</div>
+            <div id="add_remote_button" class="button add_button" onclick="add_remote_button();">Add Button</div>
         </div>
     </div>
 </div><!--master-->

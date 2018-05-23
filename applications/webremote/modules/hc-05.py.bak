@@ -1,0 +1,47 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+from gluon import *
+import subprocess
+import serial
+import json
+
+
+class HC05():
+    def __init__(self, port="/dev/ttyS1", baudrate=115200, timeout=10):
+        self.port = port
+        self.timeout = timeout
+        self.baudrate = baudrate
+        self.serial = serial.Serial(port, baudrate=baudrate, timeout=timeout)
+        self.last_code = None
+        self.output = self.serial
+
+
+    def send_code(self, bytes):
+        try:
+            for byte in bytes: self.output.write(chr(int(byte)))
+            return True
+        except Exception as error:
+            print("Failed to tranmsit BT:", bytes, error)
+            return False
+
+
+    def send_code(data):
+        code = ""
+        for byte in data:
+            code += chr(byte)
+        try:
+            if self.last_code == code: self.output.write('d')
+            else:
+                while True:
+                    self.output.write(code)
+                    while not self.output.inWaiting(): time.sleep(0.01)
+                    response = ""
+                    while self.output.inWaiting(): response += self.output.read()
+                    if response == code:
+                        self.last_code = code
+                        break
+                return True
+        except Exception as error:
+            self.error_ir("Failed to tranmsit IR:", data, error)
+            return False

@@ -126,8 +126,8 @@ def save_settings(db, settings_dict):
     db.commit()
     return db(db.settings.setting == settings_dict['setting']).select().as_dict()
 
-def call_subprocess(db, cmd):
-    subprocess.call(cmd, shell=True)
+def call_subprocess(db, cmd, shell=True):
+    subprocess.call(cmd, shell=shell)
 
 def get_tables(db):
     # SETTINGS

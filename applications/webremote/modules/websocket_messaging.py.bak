@@ -12,12 +12,13 @@ import os
 import sys
 sys.path.append('/home/www-data/web2py')
 import json
-import serial
 import requests
 import subprocess
 import traceback
 from db import *
 import webremote as wr
+import irduino as IR
+import hc05 as BT
 
 
 if (sys.version_info[0] == 2):
@@ -64,7 +65,7 @@ class PostHandler(tornado.web.RequestHandler):
         if 'message' in self.request.arguments:
             message = self.request.arguments['message'][0]
             group = self.request.arguments.get('group', ['default'])[0]
-            print('%s:MESSAGE to %s:%s' % (time.time(), group, message))
+            print('{}:MESSAGE to {}:{}'.format(time.time(), group, message))
             if hmac_key:
                 signature = self.request.arguments['signature'][0]
                 actual_signature = hmac.new(to_bytes(hmac_key), to_bytes(message)).hexdigest()
@@ -95,136 +96,6 @@ class TokenHandler(tornado.web.RequestHandler):
 
 class DistributeHandler(tornado.websocket.WebSocketHandler):
 
-    def __init__(self, application, request, **kwargs):
-        tornado.web.RequestHandler.__init__(self, application, request,
-                                            **kwargs)
-
-        self.stream = request.connection.stream
-        self.ws_connection = None
-        self.close_code = None
-        self.close_reason = None
-        self._on_close_called = False
-
-        self.bt = self.get_bt()
-        self.ir_out = self.get_ir(0)
-        self.ir_in = self.get_ir(0)
-        self.ir_ready = True
-        self.ir_last_code = None
-        self.ir_error_count = 0
-        self.ir_max_errors = 3
-
-
-
-
-    def get_ir(self, x):
-        try:
-            device_ir = "/dev/ttyACM"+str(x)
-            return serial.Serial(device_ir, baudrate=115200, timeout=60)
-        except: print("Failed to find IrToy device!")
-
-    def send_ir(self, data):
-        code = ""
-        for byte in data:
-            code += chr(byte)
-        try:
-            if self.ir_last_code == code:
-                self.write_message("sending ditto code")
-                self.ir_out.write('d')
-            else:
-                print("Code:")
-                print(code)
-                self.ir_out.write(code)
-                response = ""
-                while not self.ir_out.inWaiting(): time.sleep(0.01)
-                time.sleep(0.01)
-                while self.ir_out.inWaiting():
-                    response += self.ir_out.read()
-                while True:
-                    print("Response:")
-                    print(response)
-                    if response == code:
-                        self.ir_last_code = code
-                        break
-                    self.ir_out.write(code)
-                    response = ""
-                    while not self.ir_out.inWaiting(): time.sleep(0.01)
-                    time.sleep(0.01)
-                    while self.ir_out.inWaiting():
-                        response += self.ir_out.read()
-            return True
-        except:
-            self.error_ir("Failed to tranmsit IR: " + str(data), traceback.format_exc())
-
-    def receive_ir(self, data):
-        try:
-            code = []
-            self.ir_in.write('r')
-            while not self.ir_in.inWaiting():
-                time.sleep(0.01)
-            time.sleep(0.01)
-            while self.ir_in.inWaiting():
-                code.append(ord(self.ir_in.read()))
-            if code[0] != 116:
-                for client in listeners.get(self.group, []):
-                    client.write_message("Bad mode recieved! Got '{0}', expecting '116'".format(code[0]))
-                #self.write_message("Bad mode recieved! Got '{0}', expecting '116'".format(code[0]))
-                return False
-            if code[2]*2+3 != len(code):
-                for client in listeners.get(self.group, []):
-                    client.write_message("Bad length recieved! Got '{0}', expecting '{1}'".format(code[2]*2+3, len(code)))
-                #self.write_message("Bad length recieved! Got '{0}', expecting '{1}'".format(code[2]*2+3, len(code)))
-                return False
-            #if code[1] != 't': self.write_message("Bad mode recieved! Got '{0}', expecting '116'".format(code[0]))
-            for client in listeners.get(self.group, []):
-                client.write_message("Mode: {0} Freq: {1}, cLen: {2}\nCode[{4}]: {3}".format(code[0], code[1], code[2], code, len(code)))
-            #self.write_message("Mode: {0} Freq: {1}, cLen: {2}\nCode[{4}]: {3}".format(code[0], code[1], code[2], code, len(code)))
-            data['code'] = json.dumps(code)
-            #r = requests.post("http://localhost/add_remote_button", data=data)
-            data = wr.add_remote_button(db, data)
-            for client in listeners.get(self.group, []):
-                client.write_message(json.dumps(data))
-            #self.write_message(json.dumps(data))
-            self.ir_error_count = 0
-        except:
-            self.error_ir("Error reading IR signal!", traceback.format_exc())
-
-    def error_ir(self, message, traceback=None):
-        self.ir_error_count += 1
-        print(message)
-        self.write_message(dict(message=message))
-        print("Error count: {0}".format(self.ir_error_count))
-        self.write_message(dict(message="Error count: {0}".format(self.ir_error_count)))
-        print(traceback)
-        self.write_message(dict(message=traceback))
-
-    def get_bt(self):
-        try:
-            device_bt = "/dev/ttyS1"
-            self.bt = serial.Serial(device_bt, baudrate=115200)
-            return self.bt
-        except: pass
-        print("Failed to find BT device!")
-
-    def send_bt(self, bytes):
-        try:
-            for byte in bytes:
-                self.bt.write(chr(int(byte)))
-            return True
-        except:
-            message = "Failed to tranmsit BT: " + str(bytes)
-            print(message)
-            self.write_message(dict(message=message))
-            print(traceback.format_exc())
-            self.write_message(dict(message=traceback.format_exc()))
-            return False
-
-    def reboot(self):
-        message = "Rebooting System!"
-        print(message)
-        self.write_message(dict(message=message))
-        subprocess.Popen("sudo reboot", shell=True)
-        sys.exit(0)
-
     def check_origin(self, origin):
         return True
 
@@ -242,39 +113,33 @@ class DistributeHandler(tornado.websocket.WebSocketHandler):
         if not self.group in listeners:
             listeners[self.group] = []
         # notify clients that a member has joined the groups
-        for client in listeners.get(self.group, []):
-            client.write_message('+' + self.name)
+        #for client in listeners.get(self.group, []):
+        #    client.write_message('+' + self.name)
         listeners[self.group].append(self)
         names[self] = self.name
-        print('%s:CONNECT to %s' % (time.time(), self.group))
+        print('{}:CONNECT to {}'.format(time.time(), self.group))
 
     def on_message(self, message):
         print(message)
         try: obj = json.loads(message)
         except: return False
-        if '1' in obj:
-            self.send_bt(obj['1'])
-            return True
-        elif '2' in obj:
-            self.send_ir(obj['2'])
-            return True
+        if   '1' in obj: return bt.send_code(obj['1'])
+        elif '2' in obj: return ir.send_code(obj['2'])
         elif '3' in obj:
-            self.receive_ir(obj['3'])
-            return True
-        elif 'reboot' in obj:
-            self.reboot()
-            return True
-
-        try:
-            key = obj.keys()[0]
-            print(key)
-            method = getattr(wr, key)
-            #self.write_message({key+"_callback":method(db, obj[key])})
-            for client in listeners.get(self.group, []):
-                client.write_message({key+"_callback":method(db, obj[key])})
-        except Exception as e:
-            print("Error:")
-            print(e)
+            data = obj['3']
+            code = ir.learn_code()
+            data['code'] = json.dumps(code)
+            data = wr.add_remote_button(db, data)
+            for client in listeners.get(self.group, []): client.write_message(json.dumps(data))
+        else:
+            try:
+                key = obj.keys()[0]
+                print(key)
+                method = getattr(wr, key)
+                temp_dict = {key+"_callback": method(db, obj[key])}
+                for client in listeners.get(self.group, []): client.write_message(temp_dict)
+            except Exception as error:
+                print("Error on message:", error)
 
 
     def on_close(self):
@@ -282,9 +147,9 @@ class DistributeHandler(tornado.websocket.WebSocketHandler):
             listeners[self.group].remove(self)
         del names[self]
         # notify clients that a member has left the groups
-        for client in listeners.get(self.group, []):
-            client.write_message('-' + self.name)
-        print('%s:DISCONNECT from %s' % (time.time(), self.group))
+        #for client in listeners.get(self.group, []):
+        #    client.write_message('-' + self.name)
+        print('{}:DISCONNECT from {}'.format(time.time(), self.group))
 
 # if your webserver is different from tornado server uncomment this
 # or override using something more restrictive:
@@ -294,6 +159,9 @@ class DistributeHandler(tornado.websocket.WebSocketHandler):
 
 if __name__ == "__main__":
     print("Starting WebSocket!")
+    ir = IR.IRduino()
+    bt = BT.HC05()
+
     usage = __doc__
     version = ""
     parser = optparse.OptionParser(usage, None, optparse.Option, version)

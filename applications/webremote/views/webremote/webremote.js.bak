@@ -22,6 +22,7 @@ var offset = null
 
 var BT = 1
 var IR = 2
+var LEARN = 3
 
 var clear_bt = {1:[253,9,1,0,0,0,0,0,0,0,0, 253,5,2,0,0,0,0, 253,3,3,0,0]}
 
@@ -39,12 +40,14 @@ var keys_pressed = {}
 
 // Setup ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 $(document).ready(function(){
+
     // WEBSOCKET
     ws_ready()
 
     // SETTINGS
     setup_trash();
-    setup_button_settings();
+    setup_template_button_click();
+    setup_template_button_drag();
 
     // ACTIVITIES, REMOTES, BUTTONS & MAPS
     for(var i in activities)  display_activity(activities[i]);
@@ -56,47 +59,49 @@ $(document).ready(function(){
 
     apply_settings();
 
+    // LISTENERS
+    $(window).resize(window_resize);
+    $(document).on('mousedown touchstart', screen_press);
+    $(document).on('mouseup touchend', clear_presses);
+    $(document).on('keydown', key_down);
+    $(document).on('keyup', key_up);
+    setup_voice_control() // Only compatible with Chrome-based Browsers for now
+    $('[data-toggle="tooltip"]').tooltip();
+
     setTimeout(function(){ // Workaround for Chrome (66.0.3359.139)
-        document.body.style.display = "inline";
+        document.body.style.display = "inline-block";
         window_resize(); // Needed for jquery outerHeight() to report accurately
         position_button_maps();
-        //$('[data-toggle="tooltip"]').tooltip();
+    }, 100);
 
-        // LISTENERS
-        $(window).resize(window_resize);
-        $(document).on('mousedown', screen_press);
-        $(document).on('mouseup', clear_presses);
-        $(document).on('keydown', key_down);
-        $(document).on('keyup', key_up);
-        setup_voice_control() // Only compatible with Chrome-based Browsers for now
-    }, 1);
 });
 
 
-
-
-function setup_button_settings(){
+function setup_template_button_click(){
     $('.template').click(function(){
         if(display_layout != 'mobile') return false
         if(!edit_mode) toggle_edit_mode();
         if($('#primary_div').data("ui-tabs")) $('#primary_div').tabs({active: 2})
         var button = display_button_map({'classes':$(this).attr('class')})
-        button.attr('new', true)
         save_button_map(button)
     });
+}
+
+
+function setup_template_button_drag(){
     $('.template').draggable({
         helper: "clone",
         grid: [GRID_SIZE, GRID_SIZE],
         containment: $('#activities_div'),
         drag: function(e,ui){ align_to_grid($(ui.helper)) },
-        start: function(e,ui){ if(!edit_mode) toggle_edit_mode(); },
+        start: function(e,ui){ if(!edit_mode) toggle_edit_mode(); $(ui.helper).css("cursor", "move");},
         stop: function(e,ui){
+            $(ui.helper).css("cursor", "pointer");
             var data = {}
             data['classes'] = $(ui.helper).attr('class')
             data['x'] = parseInt($(ui.helper).position()['left'] + GRID_SIZE - $('#activities_div').offset().left);
             data['y'] = parseInt($(ui.helper).position()['top'] + GRID_SIZE + 5);
             var button = display_button_map(data);
-            button.attr('new', true)
             save_button_map(button)
         }
     });
@@ -113,11 +118,10 @@ function setup_trash(){
 
 
 function setup_voice_control(){
-    if (annyang) {
+    if(annyang){
+        //annyang.debug();
+        apply_voice_mode();
         $('.voice_mode').click(toggle_voice_mode);
-        annyang.debug();
-        toggle_voice_mode();
-        toggle_voice_mode();
     }else{
         $('#voice_settings_div').css('display', 'none');
         console.log("WARNING: This browser doesn't support voice control!")
@@ -179,7 +183,7 @@ function setup_remotes_tabs(){
                 return false
             }else{
                 current_remote = $(ui.newPanel.selector);
-                if(current_remote.attr('remote_type') == IR){
+                if(current_remote.attr('remote_type') == IR && edit_mode){
                     $('#add_remote_button').css('display', 'block')
                 }else{
                     $('#add_remote_button').css('display', 'none')
@@ -227,7 +231,6 @@ function setup_macros_tabs(){
 
 
 function setup_edit_mode_tab(e, ui){
-    $('*').blur()
     if(ui.newPanel.selector == "#edit_mode"){
         e.preventDefault();
         toggle_edit_mode();
@@ -238,17 +241,24 @@ function setup_edit_mode_tab(e, ui){
 
 // Web Socket Code ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 function ws_ready(){
-    if(ws == null || ws.readyState != 1){
+    if(ws == null){
         var url_scheme = "{{=request.env.wsgi_url_scheme}}"
         if(url_scheme == "http") ws = $.web2py.web2py_websocket("ws://"+window.location.host+":"+WEBSOCKET_PORT+"/realtime/");
         else ws = $.web2py.web2py_websocket("wss://"+window.location.host+":"+WEBSOCKET_PORT+"/realtime/");
-        ws.onmessage = on_message;
-        return false
-    } else return true
+        ws.onmessage = ws_onmessage;
+        ws.onclose   = ws_reconnect;
+    }
+    if(ws.readyState != 1) return false;
+    else return true;
+}
+
+function ws_reconnect(){
+    ws = null;
+    setTimeout(ws_ready, 1000);
 }
 
 
-function on_message(e){
+function ws_onmessage(e){
     try{var data = JSON.parse(e.data)}
     catch(err){console.log("Error:", err, e.data); return false}
     console.log(data);
@@ -272,8 +282,14 @@ function window_resize(){
         var max_height = apply_mobile_layout();
         display_layout = 'mobile'
     }
-    $('.map_div').css('height', max_height - $('#maps_tabs').outerHeight() - $('#toolbar_tabs').outerHeight() - $('#add_map_div').height() - (PADDING * 3));
-    $('.remote_div').css('height', max_height - $('#remotes_tabs').outerHeight() - $('#add_remote_button_div').height() - (PADDING * 2));
+    var map_padding = 0
+    var remote_padding = 0
+    if(edit_mode){
+        map_padding = $('#add_map_div').height() + PADDING
+        if(current_remote.attr('id') != "remote_div1") remote_padding = $('#add_remote_button_div').height() + PADDING
+    }
+    $('.map_div').css('height', max_height - $('#maps_tabs').outerHeight() - $('#toolbar_tabs').outerHeight() - map_padding - (PADDING*2));
+    $('.remote_div').css('height', max_height - $('#remotes_tabs').outerHeight() - remote_padding - (PADDING*2));
     offset = $('#activities_div').offset();
 }
 
@@ -297,6 +313,7 @@ function apply_dekstop_layout(){
     $('.key_map').removeClass('key_map_mobile')
     $('.voice_map').removeClass('voice_map_mobile')
     $('.add_button').removeClass('add_remote_button_mobile')
+    setup_template_button_drag();
     $('.template').draggable('enable');
     $('.template').removeClass('template_mobile');
     return $('#primary_div').outerHeight()
@@ -363,9 +380,7 @@ function toggle_select(e){
 function apply_edit_state(){
     if($('.edit_mode').data('checked') == true){
         edit_mode = true;
-        $('.trash').slideDown(200);
-        $('#add_map_button').slideDown(200);
-        $('#add_remote_button').slideDown(200);
+        $("#favicon").attr("href", "{{=URL('static', 'edit_mode.png')}}");
         $('.edit_mode').removeClass('glyphicon-unchecked');
         $('.edit_mode').addClass('glyphicon-check');
         $('.button_map').removeClass('clickable');
@@ -375,11 +390,14 @@ function apply_edit_state(){
         $('.voice_map').draggable('enable');
         $('.activity_tab').draggable('enable');
         $('.remote_tab').draggable('enable');
+        clear_presses()
+        if(current_remote.attr('id') != "remote_div1" ) $('#add_remote_button').slideDown(200);
+        $('#add_map_button').slideDown(200);
+        $('.trash').slideDown(200, window_resize);
     }else{
         edit_mode = false;
-        $('.trash').slideUp(200);
-        $('#add_map_button').slideUp(200);
-        $('#add_remote_button').slideUp(200);
+        disable_selected_elements();
+        $("#favicon").attr("href", "{{=URL('static', 'images/favicon.png')}}");
         $('.edit_mode').removeClass('glyphicon-check');
         $('.edit_mode').addClass('glyphicon-unchecked');
         $('.button_map').addClass('clickable');
@@ -389,23 +407,22 @@ function apply_edit_state(){
         $('.voice_map').draggable('disable');
         $('.activity_tab').draggable('disable');
         $('.remote_tab').draggable('disable');
-        
-        disable_selected_elements();
-        add_map_button
+        $('#add_remote_button').slideUp(200);
+        $('#add_map_button').slideUp(200);
+        $('.trash').slideUp(200, window_resize);
     }
     $('.edit_mode').data('checked', edit_mode);
-    console.log("Edit Mode:", edit_mode)
 }
 
 function toggle_edit_mode(){
     if($('.edit_mode').data('checked') == true){
         $('.edit_mode').data('checked', false);
-    }else{ $('.edit_mode').data('checked', true);}
+    }else{$('.edit_mode').data('checked', true);}
     apply_edit_state();
 }
 
-function toggle_voice_mode(){
-    if($('.voice_mode').data('checked') == false){
+function apply_voice_mode(){
+    if($('.voice_mode').data('checked') == true){
         voice_mode = true;
         $('.voice_mode').removeClass('glyphicon-unchecked');
         $('.voice_mode').addClass('glyphicon-check');
@@ -421,6 +438,14 @@ function toggle_voice_mode(){
     data['setting'] = "voice_mode"
     data['val'] = voice_mode
     if(ws_ready()) ws.send(JSON.stringify({'save_settings':data}));
+}
+
+
+function toggle_voice_mode(){
+    if($('.voice_mode').data('checked') == true){
+        $('.voice_mode').data('checked', false);
+    }else{$('.voice_mode').data('checked', true);}
+    apply_voice_mode();
 }
 
 
@@ -481,17 +506,14 @@ function press_button_id(button_id, repeat){
 
 
 function send_code(button){
-    if(ws_ready()){
-        var button_id = button.attr('button_id')
-        var remote_type = button.attr('remote_type')
-        if(!button_id || !remote_type) return false
+    var button_id = button.attr('button_id')
+    var remote_type = button.attr('remote_type')
+    if(ws_ready() && button_id && remote_type){
         data = {}
         try{data[remote_type] = JSON.parse(buttons[button_id]['code'])}
         catch(error){data[remote_type] = buttons[button_id]['code']}
         ws.send(JSON.stringify(data));
-        $('[button_id="'+button_id+'"]').focus();
-        $('[button_id="'+button_id+'"]').effect('highlight', 250);
-        $('[button_id="'+button_id+'"]').blur();
+        flash_buttons(button_id)
     }
 }
 
@@ -499,12 +521,11 @@ function send_code(button){
 function press_buttons(){
     if(ws_ready()){
         data = {}
+        // Keyboard
         var keys_length = Object.keys(bt_keys).length
         if(keys_length > 6) keys_length = 6;
         var mods = 0
-        for(var i in bt_mods){
-            mods += bt_mods[i];
-        }
+        for(var i in bt_mods) mods += bt_mods[i];
         var code = [253, keys_length+3, 1, mods, 0]
         var j = 0
         for(var i in bt_keys){
@@ -512,17 +533,15 @@ function press_buttons(){
             code.push(bt_keys[i])
             j++;
         }
-        console.log(code)
-        data[1] = code
+        data[BT] = code
         ws.send(JSON.stringify(data));
 
-        data = {}
+        // Mouse
         var code = [253, 5, 2]
         for(var i in bt_mouse){
             code.push(bt_mouse[i])
         }
-        console.log(code)
-        data[1] = code
+        data[BT] = code
         ws.send(JSON.stringify(data));
     }
 }
@@ -533,15 +552,16 @@ function press_buttons(){
 var start_time, end_time
 function key_down(e){
     e.preventDefault();
-    console.log(e.key)
     add_key_map(e)
-    poll_key_map(e)
+    if(!edit_mode) poll_key_map(e)
 }
 
 
 function key_up(e) {
     e.preventDefault();
-    poll_key_map_up(e);
+    if(!edit_mode) poll_key_map_up(e);
+    //stop_flash()
+    $('*').blur()
 }
 
 
@@ -564,16 +584,30 @@ function clear_presses(){
     } else if (click_end - click_start >= click_max) {
         //NOTHING
     }
-    if(bt_pressed){
+    if(bt_pressed && ws_ready()){
         ws.send(JSON.stringify(clear_bt));
         bt_pressed = false;
-        console.log("Clearing BT presses");
+        //console.log("Clearing BT presses");
     }
-    if(intervals.length > 0) console.log("Clearing IR presses");
+    //if(intervals.length > 0) console.log("Clearing IR presses");
     for(var i in intervals) clearInterval(intervals[i]);
     intervals = [];
+    //stop_flash()
+    $('*').blur()
 }
 
+function flash_buttons(button_id){
+    $('[button_id="'+button_id+'"]').effect('highlight', 150);
+}
+
+function stop_flash(){
+    setTimeout(function(){
+        $('.button_map').finish();
+        $('.key_map').finish();
+        $('.voice_map').finish();
+        $('.remote_button').finish();
+    }, 200);
+}
 
 function poll_key_map(e){
     //alert(e.key)
@@ -603,23 +637,18 @@ function poll_key_map(e){
                     }
                 }
                 press_buttons()
-                $('[button_id="'+button_id+'"]').focus();
-                $('[button_id="'+button_id+'"]').effect('highlight', 250);
-                $('[button_id="'+button_id+'"]').blur();
+
             }else if(code[2] == 2){
-                console.log("BT Mouse")
                 if(code[3] != 0) bt_mouse[0] = code[3];
-                if(code[4] == 1) bt_mouse[1] = cursor_x++;
-                else if(code[4] == 254) bt_mouse[1] = 255 - cursor_x++;
-                if(code[5] == 1) bt_mouse[2] = cursor_y++;
-                else if(code[5] == 254) bt_mouse[2] = 255 - cursor_y++;
+                if(code[4] != 0) bt_mouse[1] = code[4];
+                if(code[5] != 0) bt_mouse[2] = code[5];
                 if(code[6] != 0) bt_mouse[3] = code[6];
                 press_buttons()
-                console.log("X: " + cursor_x + " - Y: " + cursor_y)
+                flash_buttons(button_id)
             }else{
-                console.log("Others")
                 press_button(key_map['dom']);
             }
+            flash_buttons(button_id)
         }
     }
 }
@@ -674,7 +703,7 @@ function map_button(source, target){
     target.attr('name', source.attr('name'))
     target.attr('remote_type', source.attr('remote_type'))
     target.html('<div class="button_label">'+source.attr('name')+'</div>')
-    //disable_selected_elements()
+    disable_selected_elements()
     save_button_map(target)
 }
 
@@ -686,7 +715,6 @@ function map_key(source, target){
         target.attr('button_id', source.attr('button_id'))
         target.attr('name', source.attr('name'))
         target.attr('remote_type', source.attr('remote_type'))
-        //target.html(source.html())
         key_maps[activity_id][target.attr('key_code')]['remote_id'] = source.attr('remote_id')
         key_maps[activity_id][target.attr('key_code')]['button_id'] = source.attr('button_id')
         key_maps[activity_id][target.attr('key_code')]['remote_type'] = source.attr('remote_type')
@@ -718,6 +746,20 @@ function map_voice(source, target){
 
 // Display ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+function start_drag_deleteable(e, ui){
+    $('.add').html('<span class="glyphicon glyphicon-trash"></span>');
+    $('.add').css('background-color', '#496687');
+    $('.add').css('color', 'white');
+    $(ui.helper).css("cursor", "move");
+}
+
+function stop_drag_deleteable(e, ui){
+    $('.add').html('<span class="glyphicon glyphicon-plus"></span>');
+    $('.add').css('background-color', '#A4B1C0');
+    $('.add').css('color', 'white');
+    $(ui.helper).css("cursor", "pointer");
+}
+
 function display_activity(activity){
     if(!(activity['id'] in activities)) activities[activity['id']] = activity
     $('#activities_tab').append('<li><a id="activity_tab'+activity['id']+'" activity_id="'+activity['id']+'" class="activity_tab deleteable" href="#activity_div'+activity['id']+'">'+activity['name']+'</a></li>');
@@ -728,8 +770,8 @@ function display_activity(activity){
     activity_div.css('padding', 0)
     $('.activity_tab').draggable({
         helper: "clone",
-        start: function(e,ui){$('.add').html('<span class="glyphicon glyphicon-trash"></span>')},
-        stop: function(e,ui){$('.add').html('<span class="glyphicon glyphicon-plus"></span>')}
+        start: start_drag_deleteable,
+        stop: stop_drag_deleteable
     });
     if(!edit_mode) $('.activity_tab').draggable('disable');
     if(current_activity == null) current_activity = $('#activity_tab' + Object.keys(activity)[0])
@@ -742,7 +784,6 @@ function display_remote(remote){
     var remotes_tab = $('#remote_tab'+remote['id'])
     remotes_tab.attr('remote_id', remote['id'])
     remotes_tab.attr('remote_type', remote['remote_type'])
-    remotes_tab.addClass('remote_tab').addClass('deleteable')
     $('#remotes_div').append('<div id="remote_div'+remote['id']+'"></div>')
     var remote_div = $('#remote_div'+remote['id'])
     remote_div.attr('remote_id', remote['id'])
@@ -750,15 +791,18 @@ function display_remote(remote){
     remote_div.addClass('remote_div')
     remote_div.css('padding-top', 0)
     remote_div.css('padding-bottom', 0)
-    remotes_tab.draggable({
-        helper: "clone",
-        start: function(e,ui){$('.add').html('<span class="glyphicon glyphicon-trash"></span>')},
-        stop: function(e,ui){$('.add').html('<span class="glyphicon glyphicon-plus"></span>')}
-    });
-    if(!edit_mode){
-        remotes_tab.draggable('disable');
-        $('#add_remote_button').hide();
+
+    if(remote['remote_type'] != BT){
+        remotes_tab.addClass('remote_tab').addClass('deleteable')
+        remotes_tab.draggable({
+            helper: "clone",
+            start: start_drag_deleteable,
+            stop: stop_drag_deleteable
+        });
+        if(!edit_mode) remotes_tab.draggable('disable');
     }
+    if(!edit_mode) $('#add_remote_button').hide();
+
     for(var button_id in buttons){
         if(buttons[button_id]['remote_id'] == remote['id']){
             display_remote_button(buttons[button_id])
@@ -784,7 +828,7 @@ function display_remote_button(button){
     if(display_layout == 'mobile') temp_button.addClass('remote_button_mobile')
     temp_button.attr('tamapex', -1)
     buttons[button['id']]['dom'] = temp_button
-    temp_button.on('mousedown',function(e){
+    temp_button.on('mousedown touchstart',function(e){
         if(current_selection && current_selection.hasClass('button_map')){
             map_button($(this), current_selection)
             if($('#primary_div').data("ui-tabs")) $('#primary_div').tabs({active: 1})
@@ -801,15 +845,14 @@ function display_remote_button(button){
     temp_button.draggable({
         helper: "clone",
         revert: false,
-        start: function(e,ui){$('.add').html('<span class="glyphicon glyphicon-trash"></span>')},
-        stop: function(e,ui){$('.add').html('<span class="glyphicon glyphicon-plus"></span>')}
+        start: start_drag_deleteable,
+        stop: stop_drag_deleteable
     });
     return temp_button
 }
 
 
 function display_button_map(button){
-    //console.log("display_button_map", button)
     if('id' in button) var map_id = button['id'];
     else var map_id = "temp"+temp_id++
     var html = '<div id="button_map'+map_id+'"></div>';
@@ -854,20 +897,16 @@ function display_button_map(button){
     temp_button.draggable({
         grid: [GRID_SIZE, GRID_SIZE],
         containment: $('#activities_div'),
-        drag: function(e,ui){align_to_grid($(this))},
-        start: function(e,ui){$('.add').html('<span class="glyphicon glyphicon-trash"></span>')},
-        stop: function(e,ui){
-            $('.add').html('<span class="glyphicon glyphicon-plus"></span>')
-            save_button_map($(this))
+        drag: function(e, ui){align_to_grid($(this))},
+        start: start_drag_deleteable,
+        stop: function(e, ui){
+            stop_drag_deleteable(e, ui);
+            save_button_map($(this));
         },
     });
 
     if(new_button){
-        temp_button.on('mousedown', function(e){
-            if(!edit_mode){
-                press_button($(this), true)
-            }
-        });
+        temp_button.on('mousedown touchstart', function(e){if(!edit_mode) press_button($(this), true)});
         temp_button.click(function(e){toggle_select(e)});
     }
     // Select new buttons and already selected buttons
@@ -877,12 +916,9 @@ function display_button_map(button){
         event.currentTarget = temp_button
         toggle_select(event)
     }
-
     temp_button.droppable({
         accept: ".remote_button",
-        drop: function(e,ui){map_button($(ui.helper), $(e.target))},
-        over: function(e,ui){ui.draggable.css("cursor", "copy");},
-        out:  function(e,ui){ui.draggable.css("cursor", "pointer");}
+        drop: function(e,ui){map_button($(ui.helper), $(e.target))}
     });
     return temp_button
 }
@@ -908,8 +944,8 @@ function display_key_maps(activity_id){
     }
     $('.key_map').draggable({
         helper: "clone",
-        start: function(e,ui){$('.add').html('<span class="glyphicon glyphicon-trash"></span>')},
-        stop: function(e,ui){$('.add').html('<span class="glyphicon glyphicon-plus"></span>')}
+        start: start_drag_deleteable,
+        stop: stop_drag_deleteable
     });
     if(!edit_mode) $('.key_map').draggable('disable');
     $('.key_map').droppable({
@@ -949,37 +985,36 @@ function display_macros(activity_id){
 }
 */
 function display_voice_maps(activity_id){
-    if(annyang) annyang.removeCommands()
-    var commands = {}
-    $('#voice_maps').html("")
+    if(annyang) annyang.removeCommands();
+    var commands = {};
+    $('#voice_maps').html("");
     for(var i in voice_maps[activity_id]){
-        var id = voice_maps[activity_id][i]['id']
-        var button_id = voice_maps[activity_id][i]['button_id']
-        var remote_id = voice_maps[activity_id][i]['remote_id']
-        var name = voice_maps[activity_id][i]['name']
-        $('#voice_maps').append('<div id="voice_map'+id+'" tamapex="-1"></div>')
-        $('#voice_maps').css('padding-top', 0)
-        $('#voice_maps').css('padding-bottom', 0)
-        var voice_map = $('#voice_map'+id)
-        voice_map.append('<div tamapex="-1">Voice: '+name+'</div>')
-        voice_map.append('<div tamapex="-1">'+remotes[remote_id]['name']+': '+buttons[button_id]['name']+'</div>')
-        voice_maps[activity_id][i]['dom'] = voice_map
-        voice_map.attr('name', name)
-        voice_map.attr('map_id', id)
-        voice_map.attr('button_id', button_id)
-        voice_map.attr('remote_id', remote_id)
-        voice_map.attr('activity_id', activity_id)
-        voice_map.attr('remote_type', buttons[button_id]['remote_type'])
-        voice_map.addClass('voice_map').addClass('deleteable')
+        var id = voice_maps[activity_id][i]['id'];
+        var button_id = voice_maps[activity_id][i]['button_id'];
+        var remote_id = voice_maps[activity_id][i]['remote_id'];
+        var name = voice_maps[activity_id][i]['name'];
+        $('#voice_maps').append('<div id="voice_map'+id+'" tamapex="-1"></div>');
+        $('#voice_maps').css('padding-top', 0);
+        $('#voice_maps').css('padding-bottom', 0);
+        var voice_map = $('#voice_map'+id);
+        voice_map.append('<div tamapex="-1">Voice: '+name+'</div>');
+        voice_map.append('<div tamapex="-1">'+remotes[remote_id]['name']+': '+buttons[button_id]['name']+'</div>');
+        voice_maps[activity_id][i]['dom'] = voice_map;
+        voice_map.attr('name', name);
+        voice_map.attr('map_id', id);
+        voice_map.attr('button_id', button_id);
+        voice_map.attr('remote_id', remote_id);
+        voice_map.attr('activity_id', activity_id);
+        voice_map.attr('remote_type', buttons[button_id]['remote_type']);
+        voice_map.addClass('voice_map').addClass('deleteable');
         voice_map.click(function(e){toggle_select(e)});
-        commands[name] = new Function('press_button($("#'+voice_map.attr('id')+'")); clear_presses();')
+        commands[name] = new Function('press_button($("#'+voice_map.attr('id')+'")); clear_presses();');
     }
-    console.log(commands)
     if(annyang) annyang.addCommands(commands);
     $('.voice_map').draggable({
         helper: "clone",
-        start: function(e,ui){$('.add').html('<span class="glyphicon glyphicon-trash"></span>')},
-        stop: function(e,ui){$('.add').html('<span class="glyphicon glyphicon-plus"></span>')}
+        start: start_drag_deleteable,
+        stop: stop_drag_deleteable
     });
     if(!edit_mode) $('.voice_map').draggable('disable');
     $('.voice_map').droppable({
@@ -993,11 +1028,13 @@ function display_voice_maps(activity_id){
 // Add ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 function add_activity(){
-    var name = prompt("Enter new activity name"); if(name === null) return false;
-    name = name.trim(); if(name == "") return false;
-    console.log("Adding activity: "+name)
-    data = {'add_activity': {'name':name}}
-    ws.send(JSON.stringify(data));
+    if(ws_ready()){
+        var name = prompt("Enter new activity name"); if(name === null) return false;
+        name = name.trim(); if(name == "") return false;
+        console.log("Adding activity: "+name)
+        data = {'add_activity': {'name':name}}
+        ws.send(JSON.stringify(data));
+    }
 }
 
 function add_activity_callback(dict){
@@ -1017,12 +1054,13 @@ function add_activity_callback(dict){
 
 
 function add_remote(){
-    var name = prompt("Enter new remote name"); if(name === null) return false;
-    name = name.trim();
-    if(name == "") return false;
-    console.log("Adding remote: "+name)
-    data = {'add_remote': {'name':name, 'remote_type':IR, 'device_id':2}}
-    ws.send(JSON.stringify(data));
+    if(ws_ready()){
+        var name = prompt("Enter new remote name"); if(name === null) return false;
+        name = name.trim(); if(name == "") return false;
+        console.log("Adding remote: "+name)
+        data = {'add_remote': {'name':name, 'remote_type':IR, 'device_id':2}}
+        ws.send(JSON.stringify(data));
+    }
 }
 
 function add_remote_callback(remote_dict){
@@ -1039,26 +1077,18 @@ function add_remote_callback(remote_dict){
 
 function add_remote_button(){
     if(ws_ready()){
-        var name = prompt("Enter a name for the new button")
-        if(name == null || name == "") return false
+        var name = prompt("Enter a name for the new button"); if(name === null) return false;
+        name = name.trim(); if(name == "") return false;
         data = {}
-        data[3] = {}
-        data[3]['name'] = name
-        data[3]['remote_id'] = current_remote.attr('remote_id');
+        data[LEARN] = {}
+        data[LEARN]['name'] = name
+        data[LEARN]['remote_id'] = current_remote.attr('remote_id');
         ws.send(JSON.stringify(data));
     }
 }
 
 function add_remote_button_callback(data){
-    if(ws_ready()){
-        var name = prompt("Enter a name for the new button")
-        if(name == null || name == "") return false
-        data = {}
-        data[3] = {}
-        data[3]['name'] = name
-        data[3]['remote_id'] = current_remote.attr('remote_id');
-        ws.send(JSON.stringify(data));
-    }
+    console.log(data)
 }
 
 function add_map(){
@@ -1074,14 +1104,14 @@ function add_key_map(e){
     var activity_id = current_activity.attr('activity_id')
     if(!(key_code in key_maps[activity_id])){
         var id = "tempk"+temp_id++
-        $('#key_maps').append('<li id="'+id+'" class="key_map deleteable" tamapex="-1" key_code="'+key_code+'">'+key_code+' - UNASSIGNED</li>')
+        $('#key_maps').append('<li id="'+id+'" class="key_map deleteable" key_code="'+key_code+'">'+key_code+' - UNASSIGNED</li>')
         var key_map = $('#'+id)
         key_map.attr('activity_id', activity_id)
         key_map.click(function(e){toggle_select(e)});
         $('.key_map').draggable({
             helper: "clone",
-            start: function(e,ui){$('.add').html('<span class="glyphicon glyphicon-trash"></span>')},
-            stop: function(e,ui){$('.add').html('<span class="glyphicon glyphicon-plus"></span>')}
+            start: start_drag_deleteable,
+            stop: stop_drag_deleteable
         });
         if(!edit_mode) $('.key_map').draggable('disable');
         $('.key_map').droppable({
@@ -1090,7 +1120,7 @@ function add_key_map(e){
                 map_key($(ui.helper), $(e.target))
             }
         });
-        key_map.focus()
+        $('#key_maps')[0].scrollTop = $('#key_maps')[0].scrollHeight;
         key_maps[activity_id][key_code] = {}
         key_maps[activity_id][key_code]['id'] = id
         key_maps[activity_id][key_code]['dom'] = key_map
@@ -1120,8 +1150,8 @@ function add_voice_map(){
     voice_map.click(function(e){toggle_select(e)});
     $('.voice_map').draggable({
         helper: "clone",
-        start: function(e,ui){$('.add').html('<span class="glyphicon glyphicon-trash"></span>')},
-        stop: function(e,ui){$('.add').html('<span class="glyphicon glyphicon-plus"></span>')}
+        start: start_drag_deleteable,
+        stop: stop_drag_deleteable
     });
     if(!edit_mode) $('.voice_map').draggable('disable');
     $('.voice_map').droppable({
@@ -1130,7 +1160,7 @@ function add_voice_map(){
             map_voice($(ui.helper), $(e.target))
         }
     });
-    voice_map.focus()
+    $('#voice_maps')[0].scrollTop = $('#voice_maps')[0].scrollHeight;
     voice_maps[activity_id][id] = {}
     voice_maps[activity_id][id]['id'] = id
     voice_maps[activity_id][id]['dom'] = voice_map
@@ -1142,7 +1172,6 @@ function add_voice_map(){
 
 function save_button_map(button){
     console.log("Saving button map...")
-    console.log(button)
     var data = {}
     var id = button.attr('id')
     data['id'] = id.replace('button_map', '')
@@ -1178,14 +1207,12 @@ function save_button_map_callback(button_map){
 
 
 function save_key_map(button){
-    var temp_key_map = button
     console.log("Saving key map...")
     var data = {}
     data['remote_id'] = button.attr('remote_id')
     data['button_id'] = button.attr('button_id')
     data['activity_id'] = button.attr('activity_id')
     data['key_code'] = button.attr('key_code')
-    console.log(data)
     ws.send(JSON.stringify({'save_key_map':data}));
 }
 
@@ -1195,14 +1222,11 @@ function save_key_map_callback(button){
     var key_code = button['key_code'];
     console.log("Saved!")
     $("li[key_code='"+key_code+"']").attr('id', 'k'+id)
-    $('#k'+id).focus()
-    $('#k'+id).blur()
 }
 
 
-var temp_voice_map
 function save_voice_map(button){
-    temp_voice_map = button
+    button.addClass('save_voice_map')
     console.log("Saving voice map...")
     console.log(button)
     var data = {}
@@ -1218,13 +1242,11 @@ function save_voice_map(button){
 function save_voice_map_callback(map){
     var id = map['id']
     console.log("Voice map saved!")
-    if(id) temp_voice_map.attr('id', "voice_map"+id)
+    if(id) $('.save_voice_map').attr('id', "voice_map"+id)
     var commands = {}
     commands[map['name']] = new Function('press_button($("#voice_map'+id+'")); clear_presses();')
-    console.log(commands)
     if(annyang) annyang.addCommands(commands);
-    $('#voice_map'+id).focus()
-    $('#voice_map'+id).blur()
+    $('#voice_map'+id).removeClass('save_voice_map')
 }
 
 // DELETE ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1249,9 +1271,7 @@ function delete_activity(activity){
 
 function delete_activity_callback(id){
     $('#activity_tab'+id).effect('explode',{pieces: 20}, 500);
-    $('#activity_tab'+id).remove();
     $('#activity_div'+id).effect('explode',{pieces: 20}, 500);
-    $('#activity_div'+id).remove();
     setup_activities_tabs();
     console.log("Deleted activity:", id)
 }
@@ -1286,14 +1306,11 @@ function delete_remote_callback(id){
     $('.key_map').each(function(){
         if($(this).attr('remote_id') == id){
             $(this).effect('explode',{pieces: 20}, 500)
-            $(this).remove()
         }
     });
     delete remotes[id]
     $('#remote_tab'+id).effect('explode',{pieces: 20}, 500)
-    $('#remote_tab'+id).remove()
     $('#remote_div'+id).effect('explode',{pieces: 20}, 500)
-    $('#remote_div'+id).remove()
     setup_remotes_tabs();
 
     window_resize();
@@ -1330,12 +1347,10 @@ function delete_remote_button_callback(id){
     $('.key_map').each(function(){
         if($(this).attr('button_id') == id){
             $(this).effect('explode',{pieces: 20}, 500)
-            $(this).remove()
         }
     });
     delete buttons[id]
     $('#'+id).effect('explode',{pieces: 20}, 500)
-    $('#'+id).remove()
     console.log("Deleted button: "+id)
 
 }
@@ -1354,7 +1369,6 @@ function delete_button_map_callback(id){
     deleted_button_maps[id] = id
     delete button_maps[id]
     $('#button_map'+id).effect('explode',{pieces: 20}, 500)
-    $('#button_map'+id).remove()
     console.log("Deleted button map!")
 }
 
@@ -1378,7 +1392,6 @@ function delete_key_map_callback(dict){
         var id = dict
     }
     $('#'+id).effect('explode',{pieces: 20}, 500)
-    $('#'+id).remove()
     console.log("Deleted key map!")
 }
 
@@ -1401,14 +1414,13 @@ function delete_voice_map_callback(dict){
         var id = dict;
     }
     $('#voice_map'+id).effect('explode',{pieces: 20}, 500);
-    $('#voice_map'+id).remove();
     console.log("Deleted voice map!");
 }
 
 function dom2dict(dom){
     var dict = {}
-    for (var i = 0; i < elem.attributes.length; i++) {
-        var attr = elem.attributes[i];
+    for (var i = 0; i < dom.attributes.length; i++) {
+        var attr = dom.attributes[i];
         if (attr.specified) dict[attr.name] = attr.value;
     }
     return dict

@@ -4,6 +4,7 @@ import traceback
 import json
 import subprocess
 
+
 def add_activity(db, activity_dict):
     db.activities[0] = activity_dict
     db.commit()
